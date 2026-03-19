@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<title>Anime Tracker</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: white;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+}
+
+input, select, button {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 8px;
+    border: none;
+}
+
+button {
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+}
+
+.folder {
+    margin-top: 20px;
+}
+
+.card {
+    background: #1e293b;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📁 Anime & Links Tracker</h1>
+
+<input type="text" id="link" placeholder="Link...">
+
+<select id="folderSelect"></select>
+
+<button onclick="addLink()">Adaugă</button>
+
+<br><br>
+
+<input type="text" id="newFolder" placeholder="Nume folder nou">
+<button onclick="addFolder()">Adaugă Folder</button>
+
+<div id="folders"></div>
+
+<script>
+
+// 🔒 FOLDERE SAFE
+let defaultFolders = {
+    "Chrome": [],
+    "Mozilla": [],
+    "Opera": [],
+    "CC Cleaner": [],
+    "Altele": []
+};
+
+let folders;
+
+try {
+    let stored = localStorage.getItem("folders");
+    folders = stored ? JSON.parse(stored) : defaultFolders;
+
+    if (typeof folders !== "object" || Array.isArray(folders)) {
+        folders = defaultFolders;
+    }
+
+} catch {
+    folders = defaultFolders;
+}
+
+// 💾 SAVE
+function save() {
+    localStorage.setItem("folders", JSON.stringify(folders));
+}
+
+// 🔄 UPDATE SELECT
+function updateFolderSelect() {
+    let select = document.getElementById("folderSelect");
+    select.innerHTML = "";
+
+    for (let folder in folders) {
+        select.innerHTML += `<option>${folder}</option>`;
+    }
+}
+
+// ➕ ADD FOLDER
+function addFolder() {
+    let name = document.getElementById("newFolder").value;
+
+    if (name && !folders[name]) {
+        folders[name] = [];
+        save();
+        render();
+        updateFolderSelect();
+    }
+}
+
+// 🧠 EXTRACT TITLE + EPISODE
+function extractData(url) {
+    try {
+        let clean = url.toLowerCase();
+        let parts = clean.split("/");
+        let last = parts.pop() || parts.pop();
+
+        if (!last) return { title: "Anime", episode: "?" };
+
+        last = last.replace(".html", "").replace(".php", "");
+
+        let epMatch = last.match(/(episode|ep)[-_]?(\d+)/i);
+        let episode = epMatch ? epMatch[2] : "?";
+
+        let title = last
+            .replace(/(episode|ep)[-_]?\d+/i, "")
+            .replace(/[-_]/g, " ")
+            .trim();
+
+        if (!title) title = "Anime";
+
+        return { title, episode };
+
+    } catch {
+        return { title: "Anime", episode: "?" };
+    }
+}
+
+// ➕ ADD LINK
+function addLink() {
+    let url = document.getElementById("link").value;
+    let folder = document.getElementById("folderSelect").value;
+
+    if (!url) return;
+
+    let data = extractData(url);
+
+    folders[folder].push({
+        url: url,
+        title: data.title,
+        episode: data.episode
+    });
+
+    save();
+    render();
+}
+
+// ❌ DELETE
+function removeLink(folder, index) {
+    folders[folder].splice(index, 1);
+    save();
+    render();
+}
+
+// 🎨 RENDER
+function render() {
+    let container = document.getElementById("folders");
+    container.innerHTML = "";
+
+    for (let folder in folders) {
+        container.innerHTML += `<div class="folder"><h2>${folder}</h2>`;
+
+        folders[folder].forEach((link, index) => {
+            container.innerHTML += `
+            <div class="card">
+                <b>${link.title}</b> - Episod ${link.episode}<br>
+                <a href="${link.url}" target="_blank">Deschide</a><br>
+                <button onclick="removeLink('${folder}', ${index})">Șterge</button>
+            </div>
+            `;
+        });
+
+        container.innerHTML += `</div>`;
+    }
+}
+
+// 🚀 INIT
+updateFolderSelect();
+render();
+
+</script>
+
+</body>
+</html>
